@@ -1,5 +1,5 @@
 import Head from "next/head";
-import QueryBox from "@/components/QueryBox";
+import QueryBox from "@/components/queryBox";
 
 export default function Home() {
   return (
