@@ -35,7 +35,7 @@ export default function QueryBox() {
       formData.append("file", audioBlob, "audio.webm");
   
       console.log("Sending blob to backend...");
-      const res = await fetch("http://localhost:8000/transcribe", {
+      const res = await fetch("https://sidekickbackend-ogjw.onrender.com/transcribe", {
         method: "POST",
         body: formData,
       });
@@ -83,7 +83,7 @@ export default function QueryBox() {
     console.log("Mode:", mode);
     console.log("History:", history);
 
-    const res = await fetch("http://localhost:8000/query", {
+    const res = await fetch("https://sidekickbackend-ogjw.onrender.com/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: query, mode }),
