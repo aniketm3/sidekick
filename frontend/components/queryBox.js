@@ -5,37 +5,43 @@ export default function QueryBox() {
   const [mode, setMode] = useState("explain");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+
 
   const recordAudio = async () => {
     console.log("🎤 Requesting mic access...");
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    console.log("✅ Mic access granted.");
+    console.log("Mic access granted.");
   
     const mediaRecorder = new MediaRecorder(stream);
     const audioChunks = [];
   
     mediaRecorder.ondataavailable = (event) => {
-      console.log("📦 Got audio data:", event.data);
+      console.log("Got audio data:", event.data);
       audioChunks.push(event.data);
     };
   
     mediaRecorder.onstop = async () => {
       console.log("⏹ Recording stopped.");
+      setIsRecording(false);
+      setSecondsLeft(0);
+  
       const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-      console.log("🧊 Blob created. Size:", audioBlob.size);
+      console.log("Blob created. Size:", audioBlob.size);
   
       const formData = new FormData();
       formData.append("file", audioBlob, "audio.webm");
   
-      console.log("📤 Sending blob to backend...");
-      const res = await fetch("https://perplexity-take-home-seven.vercel.app/", {
+      console.log("Sending blob to backend...");
+      const res = await fetch("http://localhost:8000/transcribe", {
         method: "POST",
         body: formData,
       });
   
       console.log("awaiting");
       const data = await res.json();
-      console.log("📝 Transcription received:", data);
+      console.log("Transcription received:", data);
   
       const transcribedText = data.text;
       setInput(transcribedText);
@@ -44,20 +50,33 @@ export default function QueryBox() {
   
     console.log("⏺ Starting recording...");
     mediaRecorder.start();
+    setIsRecording(true);
+    setSecondsLeft(8);
+  
+    const countdown = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdown);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  
     setTimeout(() => {
-      console.log("⏲️ Stopping after 8s...");
+      console.log("Stopping after 8s...");
       mediaRecorder.stop();
     }, 8000);
   };
   
   
   const handleQuery = async (transcribedText) => {
-    const query = transcribedText ?? input;
+    const query = (transcribedText ?? input).toString();
     if (!query.trim()) return;
     setLoading(true);
     setResponse("");
 
-    const res = await fetch("https://perplexity-take-home-seven.vercel.app/", {
+    const res = await fetch("http://localhost:8000/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: query, mode }),
@@ -92,27 +111,39 @@ export default function QueryBox() {
       >
         {/* Recording button + subtext */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <button
-            style={{
-              padding: "0.75rem 1.5rem",
-              background: "#4f46e5",
-              color: "white",
-              fontSize: "1.05rem",
-              fontWeight: 500,
-              borderRadius: "999px",
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              transition: "background 0.3s ease",
-            }}
-            onClick={recordAudio}
-          >
-            Start Recording
-          </button>
-          <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#666" }}>
-            Or type below if you prefer
-          </p>
+            <button
+                style={{
+                padding: "0.75rem 1.5rem",
+                background: "#4f46e5",
+                color: "white",
+                fontSize: "1.05rem",
+                fontWeight: 500,
+                borderRadius: "999px",
+                border: "none",
+                cursor: isRecording ? "default" : "pointer",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                transition: "background 0.3s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                opacity: isRecording ? 0.8 : 1
+                }}
+                onClick={recordAudio}
+                disabled={isRecording}
+            >
+                {isRecording ? "Recording..." : "Start Recording"}
+                {isRecording && (
+                <span style={{ fontSize: "1rem", fontWeight: 500 }}>
+                    {secondsLeft}s
+                </span>
+                )}
+            </button>
+
+            <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#666" }}>
+                Or type below if you prefer
+            </p>
         </div>
+
 
         {/* Text area for manual input */}
         <textarea
