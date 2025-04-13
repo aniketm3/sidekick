@@ -6,15 +6,61 @@ export default function QueryBox() {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleQuery = async () => {
-    if (!input.trim()) return;
+  const recordAudio = async () => {
+    console.log("🎤 Requesting mic access...");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log("✅ Mic access granted.");
+  
+    const mediaRecorder = new MediaRecorder(stream);
+    const audioChunks = [];
+  
+    mediaRecorder.ondataavailable = (event) => {
+      console.log("📦 Got audio data:", event.data);
+      audioChunks.push(event.data);
+    };
+  
+    mediaRecorder.onstop = async () => {
+      console.log("⏹ Recording stopped.");
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+      console.log("🧊 Blob created. Size:", audioBlob.size);
+  
+      const formData = new FormData();
+      formData.append("file", audioBlob, "audio.webm");
+  
+      console.log("📤 Sending blob to backend...");
+      const res = await fetch("http://localhost:8000/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+  
+      console.log("awaiting");
+      const data = await res.json();
+      console.log("📝 Transcription received:", data);
+  
+      const transcribedText = data.text;
+      setInput(transcribedText);
+      handleQuery(transcribedText);
+    };
+  
+    console.log("⏺ Starting recording...");
+    mediaRecorder.start();
+    setTimeout(() => {
+      console.log("⏲️ Stopping after 8s...");
+      mediaRecorder.stop();
+    }, 8000);
+  };
+  
+  
+  const handleQuery = async (transcribedText) => {
+    const query = transcribedText ?? input;
+    if (!query.trim()) return;
     setLoading(true);
     setResponse("");
 
     const res = await fetch("http://localhost:8000/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: input, mode }),
+      body: JSON.stringify({ text: query, mode }),
     });
 
     const data = await res.json();
@@ -59,9 +105,9 @@ export default function QueryBox() {
               boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
               transition: "background 0.3s ease",
             }}
-            onClick={() => alert("Recording not implemented yet")}
+            onClick={recordAudio}
           >
-            Start Recording (WIP) 
+            Start Recording
           </button>
           <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#666" }}>
             Or type below if you prefer
