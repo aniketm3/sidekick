@@ -7,6 +7,7 @@ export default function QueryBox() {
   const [loading, setLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [history, setHistory] = useState([])
 
 
   const recordAudio = async () => {
@@ -71,10 +72,16 @@ export default function QueryBox() {
   
   
   const handleQuery = async (transcribedText) => {
-    const query = (transcribedText ?? input).toString();
+    const query = typeof transcribedText === "string" ? transcribedText : input;
     if (!query.trim()) return;
     setLoading(true);
     setResponse("");
+
+    //DEBUG
+    console.log("📤 Sending to backend:");
+    console.log("Query:", query);
+    console.log("Mode:", mode);
+    console.log("History:", history);
 
     const res = await fetch("http://localhost:8000/query", {
       method: "POST",
@@ -85,6 +92,12 @@ export default function QueryBox() {
     const data = await res.json();
     setResponse(data.response);
     setLoading(false);
+
+    const newPair = { prompt: query, response: data.response };
+    
+    // only keeping the last two paris, so history does not glow up in size
+    setHistory((prev) => [...prev.slice(-2), newPair]);
+
   };
 
   return (
@@ -231,9 +244,33 @@ export default function QueryBox() {
               minHeight: "80px",
             }}
           >
-            {loading ? "⏳ Thinking..." : response}
+            {loading ? "Thinking..." : response}
           </div>
         )}
+
+        {/* history display */}
+        {history.length > 0 && (
+            <div style={{ marginTop: "2rem" }}>
+                <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Past Responses</h3>
+                {[...history].reverse().map((item, i) => (
+                <div
+                    key={i}
+                    style={{
+                    marginBottom: "1rem",
+                    background: "#f9f9f9",
+                    padding: "1rem",
+                    borderRadius: "8px",
+                    }}
+                >
+                    <strong>Q:</strong> {item.prompt}
+                    <br />
+                    <strong>A:</strong> {item.response}
+                </div>
+            ))}
+        </div>
+        )}
+
+
       </div>
     </div>
   );

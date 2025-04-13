@@ -24,8 +24,13 @@ def get_rag_context(query, k=3):
     D, I = index.search(np.array(query_vec), k)
     return [texts[i] for i in I[0]]
 
-def make_prompt(user_input, context_chunks, mode="explain"):
+def make_prompt(user_input, context_chunks, mode="explain", history=[]):
     context = "\n".join(context_chunks)
+
+    #accounting for the historical q/a's and injects into the prompt
+    history_str = ""
+    for prev in history[-3:]:
+        history_str += f"\nQ: {prev['q']}\nA: {prev['a']}\n"
 
     if mode == "explain":
         return f"""
@@ -34,6 +39,9 @@ The user just heard someone say: "{user_input}"
 
 Here is some background info:
 {context}
+
+Here is the previous discussion:
+{history_str}
 
 Explain what the user just heard in simple, clear language.
 """
@@ -45,10 +53,16 @@ They just heard: "{user_input}"
 Here is some background info:
 {context}
 
+Here is the previous discussion:
+{history_str}
+
 Suggest one insightful follow-up question they could ask.
 """
 
-def answer(user_input, mode="explain"):
+def answer(user_input, mode="explain", history=None):
+    if history is None:
+        history = []
+
     chunks = get_rag_context(user_input)
     prompt = make_prompt(user_input, chunks, mode=mode)
 

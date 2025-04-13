@@ -39,9 +39,10 @@ async def transcribe(file: UploadFile):
 class QueryRequest(BaseModel):
     text: str
     mode: str = "explain"
+    history: list[dict[str, str]] = []
 
 @app.post("/query")
 def query_api(req: QueryRequest):
-    response = answer(req.text, mode=req.mode)
+    response = answer(req.text, mode=req.mode, history=req.history)
     return {"response": response}
 
