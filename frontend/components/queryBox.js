@@ -28,7 +28,7 @@ export default function QueryBox() {
       formData.append("file", audioBlob, "audio.webm");
   
       console.log("📤 Sending blob to backend...");
-      const res = await fetch("http://localhost:8000/transcribe", {
+      const res = await fetch("https://perplexity-take-home-seven.vercel.app/", {
         method: "POST",
         body: formData,
       });
@@ -57,7 +57,7 @@ export default function QueryBox() {
     setLoading(true);
     setResponse("");
 
-    const res = await fetch("http://localhost:8000/query", {
+    const res = await fetch("https://perplexity-take-home-seven.vercel.app/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: query, mode }),
