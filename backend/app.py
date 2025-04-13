@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, UploadFile
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from .query_engine import answer
+from query_engine import answer
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
