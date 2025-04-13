@@ -10,9 +10,15 @@ load_dotenv()
 
 # Load model + index + metadata
 print("Loading model and index...")
+
+# cleaner path read for index and metadata
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+index_path = os.path.join(BASE_DIR, "index/vector.index")
+meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
-index = faiss.read_index("backend/index/vector.index")
-with open("backend/index/metadata.pkl", "rb") as f:
+index = faiss.read_index(index_path)
+with open(meta_path, "rb") as f:
     metadata = pickle.load(f)
 
 texts = metadata["texts"]
