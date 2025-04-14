@@ -23,15 +23,17 @@ with open(meta_path, "rb") as f:
 
 texts = metadata["texts"]
 ids = metadata["ids"]
+sources = metadata["sources"]
 
 def get_rag_context(query, k=3):
     """Embed query and get top-k matching text chunks"""
     query_vec = model.encode([query])
     D, I = index.search(np.array(query_vec), k)
-    return [texts[i] for i in I[0]]
+    return [{"text": texts[i], "source": sources[i]} for i in I[0]]
+
 
 def make_prompt(user_input, context_chunks, mode="explain", history=[]):
-    context = "\n".join(context_chunks)
+    context = "\n".join([chunk["text"] for chunk in context_chunks])
 
     #accounting for the historical q/a's and injects into the prompt
     history_str = ""
@@ -79,7 +81,11 @@ def answer(user_input, mode="explain", history=None):
         messages=[{"role": "user", "content": prompt}]
     )
 
-    return response.choices[0].message.content
+    return {
+        "answer": response.choices[0].message.content,
+        "sources": [chunk["source"] for chunk in chunks]
+    }
+
 
 
 
@@ -89,5 +95,5 @@ if __name__ == "__main__":
     q = input("> ")
     mode = input("Mode? (explain/followup): ").strip().lower()
     out = answer(q, mode=mode)
-    print("\n🧠 Response:")
+    print("\n Response:")
     print(out)

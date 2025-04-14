@@ -44,5 +44,4 @@ class QueryRequest(BaseModel):
 @app.post("/query")
 def query_api(req: QueryRequest):
     response = answer(req.text, mode=req.mode, history=req.history)
-    return {"response": response}
-
+    return {"response": response["answer"], "sources": response["sources"]}

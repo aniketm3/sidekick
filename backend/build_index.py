@@ -10,6 +10,7 @@ with open("backend/data/ai_docs.json", "r") as f:
     docs = json.load(f)
 
 texts = [doc["text"] for doc in docs]
+sources = [doc["source"] for doc in docs]
 ids = [doc["id"] for doc in docs]
 
 # Load embedding model
@@ -32,6 +33,6 @@ os.makedirs("backend/index", exist_ok=True)
 # Save the index and metadata
 faiss.write_index(index, "backend/index/vector.index")
 with open("backend/index/metadata.pkl", "wb") as f:
-    pickle.dump({"texts": texts, "ids": ids}, f)
+    pickle.dump({"texts": texts, "ids": ids, "sources": sources}, f)
 
 print("Index built and saved.")
