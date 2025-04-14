@@ -10,6 +10,7 @@ Sidekick is a **RAG query engine** that transcribes what you may hear in convers
 - two modes: (1) `explain` for a quick summary to understand what is being said and (2) `follow-up` to quickly get a smart question to continue the conversation
 - contextual memory: storing the past query-response pairs which are injected into prompt history for better responses
 - automatic timer expiration of 8 seconds to reduce user's work
+- cited sources from the training corpus which were retreived to generate each response
 
 ## Tech Stack:
 - frontend: Reach.js and deployed to Vercel
