@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConversations } from "../hooks/useConversations";
 
 export default function QueryBox() {
   const [input, setInput] = useState("");
@@ -7,7 +8,9 @@ export default function QueryBox() {
   const [loading, setLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [history, setHistory] = useState([])
+  
+  const { addToCurrentConversation, getCurrentHistory } = useConversations();
+  const history = getCurrentHistory();
 
 
   const recordAudio = async () => {
@@ -35,8 +38,8 @@ export default function QueryBox() {
       formData.append("file", audioBlob, "audio.webm");
   
       console.log("Sending blob to backend...");
-      const res = await fetch("https://sidekickbackend-ogjw.onrender.com/transcribe", {
-    //   const res = await fetch("http://localhost:8000/transcribe", {
+      // const res = await fetch("https://sidekickbackend-ogjw.onrender.com/transcribe", {
+      const res = await fetch("http://localhost:8000/transcribe", {
 
         method: "POST",
         body: formData,
@@ -85,8 +88,8 @@ export default function QueryBox() {
     console.log("Mode:", mode);
     console.log("History:", history);
 
-    const res = await fetch("https://sidekickbackend-ogjw.onrender.com/query", {
-    // const res = await fetch("http://localhost:8000/query", {
+    // const res = await fetch("https://sidekickbackend-ogjw.onrender.com/query", {
+    const res = await fetch("http://localhost:8000/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: query, mode }),
@@ -96,10 +99,8 @@ export default function QueryBox() {
     setResponse(data.response);
     setLoading(false);
 
-    const newPair = { prompt: query, response: data.response, sources: data.sources};
-    
-    // only keeping the last two paris, so history does not glow up in size
-    setHistory((prev) => [...prev.slice(-2), newPair]);
+    // Add to conversation history using the hook
+    addToCurrentConversation(query, data.response, data.sources);
 
   };
 
@@ -254,10 +255,10 @@ export default function QueryBox() {
         {/* history display */}
         {history.length > 0 && (
             <div style={{ marginTop: "2rem" }}>
-                <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Past Responses</h3>
+                <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Current Session History</h3>
                 {[...history].reverse().map((item, i) => (
                 <div
-                    key={i}
+                    key={item.id || i}
                     style={{
                     marginBottom: "1rem",
                     background: "#f9f9f9",
@@ -266,42 +267,43 @@ export default function QueryBox() {
                     }}
                 >
                     <div style={{ marginBottom: "0.5rem", fontWeight: "600" }}>
-                        {item.mode === "explain"
-                            ? `Explaining about "${item.prompt}"`
-                            : `A couple follow-up questions you could ask about "${item.prompt}"`}
-                        </div>
+                        <span>Query: "{item.prompt}"</span>
+                        <span style={{ fontSize: "0.8rem", color: "#666", marginLeft: "1rem" }}>
+                          {new Date(item.timestamp).toLocaleTimeString()}
+                        </span>
+                    </div>
 
-                        <div
+                    <div
+                    style={{
+                        fontSize: "1.05rem",
+                        marginLeft: "1rem",
+                        paddingLeft: "0.75rem",
+                        borderLeft: "3px solid #ccc",
+                        lineHeight: "1.6",
+                        marginBottom: "0.5rem",
+                    }}
+                    >
+                    {item.response}
+                    </div>
+
+                    {item.sources && item.sources.length > 0 && (
+                    <div
                         style={{
-                            fontSize: "1.05rem",
-                            marginLeft: "1rem",
-                            paddingLeft: "0.75rem",
-                            borderLeft: "3px solid #ccc",
-                            lineHeight: "1.6",
-                            marginBottom: "0.5rem",
+                        fontSize: "0.9rem",
+                        color: "#666",
+                        marginLeft: "1rem",
+                        paddingLeft: "0.25rem",
                         }}
-                        >
-                        {item.response}
-                        </div>
-
-                        {item.sources && item.sources.length > 0 && (
-                        <div
-                            style={{
-                            fontSize: "0.9rem",
-                            color: "#666",
-                            marginLeft: "1rem",
-                            paddingLeft: "0.25rem",
-                            }}
-                        >
-                            <strong>Sources:</strong>{" "}
-                            {item.sources.map((s, j) => (
-                            <span key={j}>
-                                {s}
-                                {j < item.sources.length - 1 ? ", " : ""}
-                            </span>
-                            ))}
-                        </div>
-                        )}
+                    >
+                        <strong>Sources:</strong>{" "}
+                        {item.sources.map((s, j) => (
+                        <span key={j}>
+                            {s}
+                            {j < item.sources.length - 1 ? ", " : ""}
+                        </span>
+                        ))}
+                    </div>
+                    )}
                 </div>
             ))}
         </div>
