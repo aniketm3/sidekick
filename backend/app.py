@@ -489,3 +489,103 @@ def delete_corpus_document(document_id: str):
     except Exception as e:
         print(f"Error deleting document {document_id} from corpus: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete document")
+
+# Index Management Endpoints
+
+@app.get("/index/status")
+def get_index_status():
+    """Get the current status of the search index"""
+    try:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        status_path = os.path.join(BASE_DIR, "index/rebuild_status.json")
+        
+        if os.path.exists(status_path):
+            with open(status_path, 'r') as f:
+                status = json.load(f)
+        else:
+            status = {
+                "status": "unknown",
+                "last_rebuild": "never",
+                "total_documents": 0
+            }
+        
+        # Check if rebuild is needed by comparing file modification times
+        needs_rebuild = False
+        rebuild_reason = []
+        
+        try:
+            interviews_file = os.path.join(BASE_DIR, "backend/interviews.json")
+            metadata_file = os.path.join(BASE_DIR, "index/metadata.pkl")
+            
+            if not os.path.exists(metadata_file):
+                needs_rebuild = True
+                rebuild_reason.append("No index found")
+            else:
+                metadata_mtime = os.path.getmtime(metadata_file)
+                
+                if os.path.exists(interviews_file):
+                    interviews_mtime = os.path.getmtime(interviews_file)
+                    if interviews_mtime > metadata_mtime:
+                        needs_rebuild = True
+                        rebuild_reason.append("Interview documents updated")
+                        
+        except Exception as e:
+            print(f"Error checking rebuild status: {e}")
+        
+        status["needs_rebuild"] = needs_rebuild
+        status["rebuild_reason"] = rebuild_reason
+        
+        return status
+        
+    except Exception as e:
+        print(f"Error getting index status: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "needs_rebuild": True,
+            "rebuild_reason": ["Error checking status"]
+        }
+
+# Global variable to track rebuild progress
+rebuild_progress = {"progress": 0, "message": "Ready", "active": False}
+
+def progress_callback(progress, message):
+    """Callback function for rebuild progress updates"""
+    global rebuild_progress
+    rebuild_progress = {
+        "progress": progress,
+        "message": message,
+        "active": True
+    }
+
+@app.get("/index/progress")
+def get_rebuild_progress():
+    """Get the current rebuild progress"""
+    return rebuild_progress
+
+@app.post("/index/rebuild")
+def rebuild_search_index():
+    """Manually trigger a search index rebuild"""
+    global rebuild_progress
+    
+    if rebuild_progress.get("active", False):
+        return {"error": "Rebuild already in progress"}
+    
+    try:
+        # Import here to avoid circular imports
+        from rebuild_index import rebuild_index
+        
+        # Reset progress
+        rebuild_progress = {"progress": 0, "message": "Starting rebuild...", "active": True}
+        
+        # Start rebuild with progress callback
+        result = rebuild_index(progress_callback=progress_callback)
+        
+        # Mark as complete
+        rebuild_progress["active"] = False
+        
+        return result
+        
+    except Exception as e:
+        rebuild_progress = {"progress": 0, "message": f"Error: {str(e)}", "active": False}
+        raise HTTPException(status_code=500, detail=f"Failed to rebuild index: {str(e)}")

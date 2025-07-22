@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { deleteDocument } from '../utils/documentUtils';
+import { TailSpin } from 'react-loader-spinner';
 
 export default function ViewCorpus() {
   const [corpus, setCorpus] = useState(null);
@@ -8,10 +9,68 @@ export default function ViewCorpus() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [filterType, setFilterType] = useState('all'); // 'all', 'original', 'interview'
+  const [indexStatus, setIndexStatus] = useState(null);
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildProgress, setRebuildProgress] = useState({ progress: 0, message: '' });
 
   useEffect(() => {
     fetchCorpus();
+    fetchIndexStatus();
   }, []);
+
+  const fetchIndexStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/index/status');
+      if (response.ok) {
+        const status = await response.json();
+        setIndexStatus(status);
+      }
+    } catch (err) {
+      console.error('Error fetching index status:', err);
+    }
+  };
+
+  const rebuildIndex = async () => {
+    try {
+      setRebuilding(true);
+      setRebuildProgress({ progress: 0, message: '' });
+
+      // Start the rebuild
+      const rebuildResponse = await fetch('http://localhost:8000/index/rebuild', {
+        method: 'POST'
+      });
+
+      if (!rebuildResponse.ok) {
+        throw new Error('Failed to start index rebuild');
+      }
+
+      // Poll for progress
+      const pollProgress = async () => {
+        const progressResponse = await fetch('http://localhost:8000/index/progress');
+        if (progressResponse.ok) {
+          const progress = await progressResponse.json();
+          setRebuildProgress(progress);
+          
+          if (progress.active) {
+            setTimeout(pollProgress, 1000); // Poll every second
+          } else {
+            // Rebuild completed
+            setRebuilding(false);
+            await fetchCorpus(); // Refresh corpus data
+            await fetchIndexStatus(); // Refresh status
+          }
+        }
+      };
+
+      // Start polling
+      setTimeout(pollProgress, 1000);
+
+    } catch (err) {
+      setRebuilding(false);
+      setRebuildProgress({ progress: 0, message: `Error: ${err.message}` });
+      console.error('Error rebuilding index:', err);
+    }
+  };
 
   const fetchCorpus = async () => {
     try {
@@ -111,25 +170,82 @@ export default function ViewCorpus() {
       fontFamily: 'sans-serif',
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '2rem'
+      padding: '2rem',
+      position: 'relative'
     }}>
+      {/* Rebuild Button - Top-right of page content */}
+      <button
+        onClick={rebuildIndex}
+        disabled={rebuilding}
+        style={{
+          position: 'absolute',
+          top: '-60px',
+          right: 0,
+          backgroundColor: rebuilding ? '#a855f7' : '#4f46e5',
+          border: 'none',
+          color: 'white',
+          cursor: rebuilding ? 'not-allowed' : 'pointer',
+          padding: '0.5rem 1rem',
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          borderRadius: '6px',
+          opacity: rebuilding ? 0.7 : 1
+        }}
+        title={rebuilding ? `Rebuilding... ${rebuildProgress.progress}%` : 'Rebuild search index'}
+      >
+        {rebuilding ? (
+          <TailSpin
+            height="20"
+            width="20"
+            color="white"
+            ariaLabel="rebuilding"
+          />
+        ) : (
+          'Rebuild'
+        )}
+      </button>
+
+      {/* Index Status - Near button */}
+      {indexStatus && indexStatus.last_rebuild !== 'never' && (
+        <div style={{ 
+          position: 'absolute',
+          top: '-20px',
+          right: '80px',
+          fontSize: '0.75rem', 
+          color: '#6b7280',
+          textAlign: 'right'
+        }}>
+          Index built: {new Date(indexStatus.last_rebuild).toLocaleDateString('en-US', {
+            month: 'numeric',
+            day: 'numeric'
+          })} {new Date(indexStatus.last_rebuild).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }).toLowerCase()}
+        </div>
+      )}
+
+
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ 
-          fontSize: '1.8rem', 
-          fontWeight: '600', 
-          margin: '0 0 0.5rem 0',
-          color: '#333'
-        }}>
-          Knowledge Base Corpus
-        </h1>
-        <p style={{ 
-          color: '#666', 
-          fontSize: '1rem',
-          margin: 0
-        }}>
-          Explore the {corpus?.corpus_info?.total_documents || 0} documents in your knowledge base
-        </p>
+        <div>
+          <h1 style={{ 
+            fontSize: '1.8rem', 
+            fontWeight: '600', 
+            margin: '0 0 0.5rem 0',
+            color: '#333'
+          }}>
+            Knowledge Base Corpus
+          </h1>
+          <p style={{ 
+            color: '#666', 
+            fontSize: '1rem',
+            margin: 0
+          }}>
+            Explore the {corpus?.corpus_info?.total_documents || 0} documents in your knowledge base
+          </p>
+        </div>
       </div>
 
       {/* Stats */}

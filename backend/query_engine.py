@@ -21,9 +21,13 @@ index = faiss.read_index(index_path)
 with open(meta_path, "rb") as f:
     metadata = pickle.load(f)
 
-texts = metadata["texts"]
-ids = metadata["ids"]
-sources = metadata["sources"]
+texts = metadata.get("texts", [])
+ids = metadata.get("ids", [])  
+sources = metadata.get("sources", [])
+
+print(f"Loaded {len(texts)} documents from unified index")
+if "last_rebuilt" in metadata:
+    print(f"Index last rebuilt: {metadata['last_rebuilt']}")
 
 def get_rag_context(query, k=3):
     """Embed query and get top-k matching text chunks"""
