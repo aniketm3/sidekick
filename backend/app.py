@@ -402,3 +402,90 @@ Example: [{{"title": "Paper/Topic Name", "reason": "Why this is relevant"}}]
         import traceback
         traceback.print_exc()
         return {"suggestions": []}
+
+@app.delete("/interviews/{interview_id}/documents/{document_id}")
+def delete_document_from_interview(interview_id: str, document_id: str):
+    """Delete a document from an interview"""
+    try:
+        print(f"DELETE /interviews/{interview_id}/documents/{document_id}")
+        interviews = load_interviews()
+        interview = interviews.get(interview_id)
+        
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        
+        # Find and remove the document
+        documents = interview.get("documents", [])
+        original_count = len(documents)
+        interview["documents"] = [doc for doc in documents if doc["id"] != document_id]
+        
+        if len(interview["documents"]) == original_count:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        interview["updated_at"] = datetime.now().isoformat()
+        interviews[interview_id] = interview
+        save_interviews(interviews)
+        
+        print(f"Document {document_id} deleted successfully")
+        return {"message": "Document deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting document {document_id} from interview {interview_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete document")
+
+@app.delete("/corpus/{document_id}")
+def delete_corpus_document(document_id: str):
+    """Delete an original corpus document and rebuild the index"""
+    try:
+        print(f"DELETE /corpus/{document_id}")
+        
+        # Load existing metadata
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
+        
+        if not os.path.exists(meta_path):
+            raise HTTPException(status_code=404, detail="Corpus not found")
+        
+        with open(meta_path, "rb") as f:
+            metadata = pickle.load(f)
+        
+        texts = metadata.get("texts", [])
+        sources = metadata.get("sources", [])
+        ids = metadata.get("ids", [])
+        
+        # Find the document to delete
+        doc_index = None
+        for i, doc_id in enumerate(ids):
+            if f"corpus_{doc_id}" == document_id:
+                doc_index = i
+                break
+        
+        if doc_index is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Remove the document from metadata
+        del texts[doc_index]
+        del sources[doc_index]  
+        del ids[doc_index]
+        
+        # Update metadata
+        updated_metadata = {
+            "texts": texts,
+            "sources": sources,
+            "ids": ids
+        }
+        
+        # Save updated metadata
+        with open(meta_path, "wb") as f:
+            pickle.dump(updated_metadata, f)
+        
+        print(f"Document {document_id} deleted from corpus successfully")
+        return {"message": "Document deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting document {document_id} from corpus: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete document")

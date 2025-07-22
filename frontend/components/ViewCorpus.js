@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { deleteDocument } from '../utils/documentUtils';
 
 export default function ViewCorpus() {
   const [corpus, setCorpus] = useState(null);
@@ -46,6 +47,17 @@ export default function ViewCorpus() {
   const truncateText = (text, maxLength = 200) => {
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
+  };
+
+  const handleDeleteDocument = async (doc) => {
+    const result = await deleteDocument(doc);
+    
+    if (result.success) {
+      await fetchCorpus();
+      setSelectedDocument(null);
+    } else {
+      alert(`Failed to delete document: ${result.error}`);
+    }
   };
 
   if (loading) {
@@ -247,7 +259,7 @@ export default function ViewCorpus() {
                   }}>
                     {doc.title}
                   </h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem', alignItems: 'center' }}>
                     {doc.type === 'interview_document' && (
                       <span style={{
                         fontSize: '0.7rem',
@@ -271,6 +283,31 @@ export default function ViewCorpus() {
                     }}>
                       {doc.word_count} words
                     </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDocument(doc);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#888',
+                        cursor: 'pointer',
+                        padding: '0.2rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '4px'
+                      }}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#fee2e2'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                      title="Delete document"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3,6 5,6 21,6"/>
+                        <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 <p style={{
