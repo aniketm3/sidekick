@@ -6,6 +6,7 @@ from query_engine import answer
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+import pickle
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -66,3 +67,60 @@ def query_api(req: QueryRequest):
         else:
             mock_response += "Here would be a suggested follow-up question to continue the conversation."
         return {"response": mock_response, "sources": ["Mock Source 1", "Mock Source 2"]}
+
+@app.get("/corpus")
+def get_corpus():
+    """Get the corpus information - documents, sources, and metadata"""
+    try:
+        # Load the metadata from the pickle file
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
+        
+        with open(meta_path, "rb") as f:
+            metadata = pickle.load(f)
+        
+        # Structure the corpus data for frontend consumption
+        corpus_data = []
+        texts = metadata.get("texts", [])
+        sources = metadata.get("sources", [])
+        ids = metadata.get("ids", [])
+        
+        for i, (text, source, doc_id) in enumerate(zip(texts, sources, ids)):
+            corpus_data.append({
+                "id": doc_id,
+                "title": source,  # Use source as title
+                "content": text,
+                "source": source,
+                "word_count": len(text.split()),
+                "index": i
+            })
+        
+        return {
+            "documents": corpus_data,
+            "total_count": len(corpus_data),
+            "corpus_info": {
+                "total_documents": len(corpus_data),
+                "total_words": sum(len(text.split()) for text in texts)
+            }
+        }
+    
+    except Exception as e:
+        print(f"Corpus retrieval error: {e}")
+        # Fallback mock data
+        return {
+            "documents": [
+                {
+                    "id": "mock_1",
+                    "title": "Mock Research Paper 1",
+                    "content": "This is a mock research paper for demonstration purposes.",
+                    "source": "Mock Journal 2024",
+                    "word_count": 12,
+                    "index": 0
+                }
+            ],
+            "total_count": 1,
+            "corpus_info": {
+                "total_documents": 1,
+                "total_words": 12
+            }
+        }
