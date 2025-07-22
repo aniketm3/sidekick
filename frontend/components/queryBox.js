@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function QueryBox({ conversationHistory, onAddToConversation }) {
   const [input, setInput] = useState("");
@@ -7,8 +7,33 @@ export default function QueryBox({ conversationHistory, onAddToConversation }) {
   const [loading, setLoading] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [selectedSource, setSelectedSource] = useState(null);
+  const [corpus, setCorpus] = useState(null);
   
   const history = conversationHistory || [];
+
+  useEffect(() => {
+    fetchCorpus();
+  }, []);
+
+  const fetchCorpus = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/corpus');
+      if (response.ok) {
+        const data = await response.json();
+        setCorpus(data);
+      }
+    } catch (err) {
+      console.error('Error fetching corpus:', err);
+    }
+  };
+
+  const findDocumentBySource = (sourceName) => {
+    if (!corpus?.documents) return null;
+    return corpus.documents.find(doc => 
+      doc.title === sourceName || doc.source === sourceName || doc.source?.includes(sourceName)
+    );
+  };
 
 
   const recordAudio = async () => {
@@ -254,7 +279,13 @@ export default function QueryBox({ conversationHistory, onAddToConversation }) {
 
         {/* history display */}
         {history.length > 0 && (
-            <div style={{ marginTop: "2rem" }}>
+            <div style={{ 
+              marginTop: "2rem",
+              display: 'grid',
+              gap: '1.5rem',
+              gridTemplateColumns: selectedSource ? '1fr 1fr' : '1fr'
+            }}>
+              <div>
                 <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Current Session History</h3>
                 {[...history].reverse().map((item, i) => (
                 <div
@@ -298,15 +329,105 @@ export default function QueryBox({ conversationHistory, onAddToConversation }) {
                         <strong>Sources:</strong>{" "}
                         {item.sources.map((s, j) => (
                         <span key={j}>
-                            {s}
+                            <button
+                              onClick={() => {
+                                const doc = findDocumentBySource(s);
+                                if (doc) {
+                                  setSelectedSource(selectedSource?.id === doc.id ? null : doc);
+                                }
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#666',
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                fontSize: 'inherit',
+                                padding: 0
+                              }}
+                              onMouseOver={(e) => e.target.style.color = '#333'}
+                              onMouseOut={(e) => e.target.style.color = '#666'}
+                            >
+                              {s}
+                            </button>
                             {j < item.sources.length - 1 ? ", " : ""}
                         </span>
                         ))}
                     </div>
                     )}
                 </div>
-            ))}
-        </div>
+                ))}
+              </div>
+
+              {/* Source Detail Panel */}
+              {selectedSource && (
+                <div style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '2rem',
+                  position: 'sticky',
+                  top: '120px',
+                  height: 'fit-content',
+                  maxHeight: 'calc(100vh - 160px)',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <h2 style={{
+                      fontSize: '1.25rem',
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      {selectedSource.title}
+                    </h2>
+                    <button
+                      onClick={() => setSelectedSource(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '1.5rem',
+                        padding: '0.25rem'
+                      }}
+                      title="Close"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  <div style={{
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    marginBottom: '1rem',
+                    paddingBottom: '1rem',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <div>Document ID: {selectedSource.id}</div>
+                    <div>Word Count: {selectedSource.word_count}</div>
+                    {selectedSource.type === 'interview_document' && (
+                      <div>From Interview: {selectedSource.interview_title}</div>
+                    )}
+                  </div>
+
+                  <div style={{
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {selectedSource.content}
+                  </div>
+                </div>
+              )}
+            </div>
         )}
 
 
