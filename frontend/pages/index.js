@@ -3,11 +3,12 @@ import { useState } from "react";
 import QueryBox from "@/components/queryBox";
 import ChatSidebar from "@/components/ChatSidebar";
 import ViewCorpus from "@/components/ViewCorpus";
+import PrepInterview from "@/components/PrepInterview";
 import { useConversations } from "@/hooks/useConversations";
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'corpus'
+  const [currentView, setCurrentView] = useState('chat'); // 'chat', 'corpus', or 'prep'
   
   const {
     conversations,
@@ -122,6 +123,20 @@ export default function Home() {
             >
               View Corpus
             </button>
+            <button
+              onClick={() => setCurrentView('prep')}
+              style={{
+                padding: "0.5rem 1rem",
+                background: currentView === 'prep' ? "#4f46e5" : "transparent",
+                color: currentView === 'prep' ? "white" : "#333",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: currentView === 'prep' ? "600" : "400",
+                fontSize: "0.9rem"
+              }}
+            >
+              Prep Interview
+            </button>
           </div>
         </div>
       </header>
@@ -129,7 +144,7 @@ export default function Home() {
       {/* Main Content */}
       <main style={{ 
         paddingTop: "120px", // Account for fixed header height
-        padding: currentView === 'corpus' ? "120px 0 2rem 0" : "120px 2rem 2rem", 
+        padding: (currentView === 'corpus' || currentView === 'prep') ? "120px 0 2rem 0" : "120px 2rem 2rem", 
         fontFamily: "sans-serif",
         marginLeft: (sidebarOpen && currentView === 'chat') ? '280px' : '0',
         transition: 'margin-left 0.3s ease',
@@ -141,8 +156,10 @@ export default function Home() {
             conversationHistory={conversations.find(conv => conv.id === currentConversationId)?.history || []}
             onAddToConversation={addToCurrentConversation}
           />
-        ) : (
+        ) : currentView === 'corpus' ? (
           <ViewCorpus />
+        ) : (
+          <PrepInterview />
         )}
       </main>
     </div>

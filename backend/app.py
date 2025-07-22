@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, UploadFile
+from fastapi import FastAPI, Request, UploadFile, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -7,9 +7,41 @@ from dotenv import load_dotenv
 import os
 from openai import OpenAI
 import pickle
+import json
+import uuid
+from datetime import datetime
+from typing import List, Optional
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Interview data storage (in production, use a proper database)
+INTERVIEWS_FILE = "backend/interviews.json"
+
+def load_interviews():
+    """Load interviews from JSON file"""
+    try:
+        if os.path.exists(INTERVIEWS_FILE):
+            with open(INTERVIEWS_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"Error loading interviews: {e}")
+        return {}
+
+def save_interviews(interviews_data):
+    """Save interviews to JSON file"""
+    try:
+        os.makedirs(os.path.dirname(INTERVIEWS_FILE), exist_ok=True)
+        with open(INTERVIEWS_FILE, 'w') as f:
+            json.dump(interviews_data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving interviews: {e}")
+
+def get_interview_by_id(interview_id: str):
+    """Get interview by ID"""
+    interviews = load_interviews()
+    return interviews.get(interview_id)
 
 app = FastAPI()
 
@@ -52,6 +84,37 @@ class QueryRequest(BaseModel):
     text: str
     mode: str = "explain"
     history: list[dict[str, str]] = []
+
+class InterviewCreateRequest(BaseModel):
+    title: str
+    company: str = ""
+    role: str = ""
+    topics: str = ""
+    description: str = ""
+
+class DocumentAddRequest(BaseModel):
+    title: str
+    content: str
+    source: str = ""
+
+class Document(BaseModel):
+    id: str
+    title: str
+    content: str
+    source: str
+    word_count: int
+    created_at: str
+
+class Interview(BaseModel):
+    id: str
+    title: str
+    company: str
+    role: str
+    topics: str
+    description: str
+    documents: List[Document]
+    created_at: str
+    updated_at: str
 
 @app.post("/query")
 def query_api(req: QueryRequest):
@@ -124,3 +187,194 @@ def get_corpus():
                 "total_words": 12
             }
         }
+
+# Interview Management Endpoints
+
+@app.get("/interviews")
+def get_interviews():
+    """Get all interviews"""
+    try:
+        interviews_data = load_interviews()
+        interviews_list = []
+        
+        for interview_id, interview in interviews_data.items():
+            interviews_list.append({
+                "id": interview_id,
+                "title": interview["title"],
+                "company": interview.get("company", ""),
+                "role": interview.get("role", ""),
+                "topics": interview.get("topics", ""),
+                "document_count": len(interview.get("documents", [])),
+                "created_at": interview["created_at"],
+                "updated_at": interview["updated_at"]
+            })
+        
+        # Sort by updated_at descending
+        interviews_list.sort(key=lambda x: x["updated_at"], reverse=True)
+        
+        return {"interviews": interviews_list}
+    except Exception as e:
+        print(f"Error getting interviews: {e}")
+        return {"interviews": []}
+
+@app.post("/interviews")
+def create_interview(request: InterviewCreateRequest):
+    """Create a new interview"""
+    try:
+        interview_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        interview_data = {
+            "id": interview_id,
+            "title": request.title,
+            "company": request.company,
+            "role": request.role,
+            "topics": request.topics,
+            "description": request.description,
+            "documents": [],
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        interviews = load_interviews()
+        interviews[interview_id] = interview_data
+        save_interviews(interviews)
+        
+        return {"interview": interview_data}
+    except Exception as e:
+        print(f"Error creating interview: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create interview")
+
+@app.get("/interviews/{interview_id}")
+def get_interview(interview_id: str):
+    """Get specific interview with documents"""
+    try:
+        interview = get_interview_by_id(interview_id)
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        
+        return {"interview": interview}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting interview {interview_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get interview")
+
+@app.post("/interviews/{interview_id}/documents")
+def add_document_to_interview(interview_id: str, request: DocumentAddRequest):
+    """Add a document to an interview"""
+    try:
+        interviews = load_interviews()
+        interview = interviews.get(interview_id)
+        
+        if not interview:
+            raise HTTPException(status_code=404, detail="Interview not found")
+        
+        document_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        document = {
+            "id": document_id,
+            "title": request.title,
+            "content": request.content,
+            "source": request.source or request.title,
+            "word_count": len(request.content.split()),
+            "created_at": now
+        }
+        
+        interview["documents"].append(document)
+        interview["updated_at"] = now
+        
+        interviews[interview_id] = interview
+        save_interviews(interviews)
+        
+        return {"document": document, "message": "Document added successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error adding document to interview {interview_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add document")
+
+@app.post("/interviews/{interview_id}/suggest-papers")
+def suggest_papers_for_interview(interview_id: str):
+    """Generate AI suggestions for relevant papers based on interview details"""
+    try:
+        print(f"POST /interviews/{interview_id}/suggest-papers - Getting suggestions...")
+        interview = get_interview_by_id(interview_id)
+        print(f"Interview found: {interview is not None}")
+        
+        if not interview:
+            print("Interview not found, returning 404")
+            raise HTTPException(status_code=404, detail="Interview not found")
+        
+        print(f"Interview details: {interview}")
+        
+        # Check if we're in mock mode
+        api_key = os.getenv("OPENAI_API_KEY")
+        print(f"OpenAI API key present: {api_key is not None and api_key != 'your-openai-api-key-here'}")
+        
+        if not api_key or api_key == "your-openai-api-key-here":
+            print("Using mock suggestions (no valid API key)")
+            return {
+                "suggestions": [
+                    {
+                        "title": "Mock Paper 1: Machine Learning Fundamentals",
+                        "reason": "Relevant for ML engineer interviews"
+                    },
+                    {
+                        "title": "Mock Paper 2: System Design Patterns",
+                        "reason": "Important for senior engineering roles"
+                    }
+                ]
+            }
+        
+        print("Making OpenAI API request for suggestions...")
+        
+        # Create prompt for AI suggestions
+        prompt = f"""
+Given this interview preparation context:
+- Company: {interview.get('company', 'Not specified')}
+- Role: {interview.get('role', 'Not specified')}
+- Topics: {interview.get('topics', 'Not specified')}
+- Description: {interview.get('description', 'Not specified')}
+
+Suggest 5 relevant research papers, academic topics, or technical concepts that would be valuable to study for this interview. 
+
+Format your response as a JSON array with objects containing 'title' and 'reason' fields.
+Example: [{{"title": "Paper/Topic Name", "reason": "Why this is relevant"}}]
+        """
+        
+        print(f"OpenAI prompt: {prompt}")
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        print(f"OpenAI response received: {response.choices[0].message.content}")
+        
+        try:
+            suggestions = json.loads(response.choices[0].message.content)
+            print(f"Parsed suggestions: {suggestions}")
+            return {"suggestions": suggestions}
+        except json.JSONDecodeError as json_error:
+            print(f"JSON decode error: {json_error}")
+            print(f"Raw response content: {response.choices[0].message.content}")
+            # Fallback if AI doesn't return valid JSON
+            return {
+                "suggestions": [
+                    {
+                        "title": "Technical fundamentals for the role",
+                        "reason": "Based on your interview description, studying core technical concepts would be beneficial"
+                    }
+                ]
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating suggestions for interview {interview_id}: {e}")
+        print(f"Exception type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return {"suggestions": []}
