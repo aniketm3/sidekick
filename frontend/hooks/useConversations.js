@@ -56,7 +56,9 @@ export function useConversations() {
       lastUpdated: new Date().toISOString()
     };
 
-    setConversations(prev => [newConversation, ...prev]);
+    setConversations(prev => [newConversation, ...prev].sort((a, b) => 
+      new Date(b.lastUpdated) - new Date(a.lastUpdated)
+    ));
     setCurrentConversationId(newId);
     return newId;
   };
@@ -94,7 +96,7 @@ export function useConversations() {
         conv.id === id 
           ? { ...conv, name: newName, lastUpdated: new Date().toISOString() }
           : conv
-      )
+      ).sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
     );
   };
 
@@ -127,7 +129,7 @@ export function useConversations() {
                 : conv.name
             }
           : conv
-      )
+      ).sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
     );
   };
 

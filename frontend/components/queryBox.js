@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useConversations } from "../hooks/useConversations";
 
-export default function QueryBox() {
+export default function QueryBox({ conversationHistory, onAddToConversation }) {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("explain");
   const [response, setResponse] = useState("");
@@ -9,8 +8,7 @@ export default function QueryBox() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   
-  const { addToCurrentConversation, getCurrentHistory } = useConversations();
-  const history = getCurrentHistory();
+  const history = conversationHistory || [];
 
 
   const recordAudio = async () => {
@@ -99,8 +97,10 @@ export default function QueryBox() {
     setResponse(data.response);
     setLoading(false);
 
-    // Add to conversation history using the hook
-    addToCurrentConversation(query, data.response, data.sources);
+    // Add to conversation history using the callback
+    if (onAddToConversation) {
+      onAddToConversation(query, data.response, data.sources);
+    }
 
   };
 

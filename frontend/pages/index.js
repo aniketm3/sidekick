@@ -13,7 +13,8 @@ export default function Home() {
     createNewConversation,
     selectConversation,
     deleteConversation,
-    renameConversation
+    renameConversation,
+    addToCurrentConversation
   } = useConversations();
 
   return (
@@ -88,7 +89,11 @@ export default function Home() {
         transition: 'margin-left 0.3s ease',
         minHeight: '100vh'
       }}>
-        <QueryBox />
+        <QueryBox 
+          key={currentConversationId} // Force re-render when conversation changes
+          conversationHistory={conversations.find(conv => conv.id === currentConversationId)?.history || []}
+          onAddToConversation={addToCurrentConversation}
+        />
       </main>
     </div>
   );
