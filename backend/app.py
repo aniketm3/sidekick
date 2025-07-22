@@ -133,37 +133,61 @@ def query_api(req: QueryRequest):
 
 @app.get("/corpus")
 def get_corpus():
-    """Get the corpus information - documents, sources, and metadata"""
+    """Get the corpus information - documents, sources, and metadata including interview documents"""
     try:
-        # Load the metadata from the pickle file
+        # Load the original corpus from the pickle file
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
         
-        with open(meta_path, "rb") as f:
-            metadata = pickle.load(f)
-        
-        # Structure the corpus data for frontend consumption
         corpus_data = []
-        texts = metadata.get("texts", [])
-        sources = metadata.get("sources", [])
-        ids = metadata.get("ids", [])
+        total_words = 0
         
-        for i, (text, source, doc_id) in enumerate(zip(texts, sources, ids)):
-            corpus_data.append({
-                "id": doc_id,
-                "title": source,  # Use source as title
-                "content": text,
-                "source": source,
-                "word_count": len(text.split()),
-                "index": i
-            })
+        # Add original corpus documents
+        if os.path.exists(meta_path):
+            with open(meta_path, "rb") as f:
+                metadata = pickle.load(f)
+            
+            texts = metadata.get("texts", [])
+            sources = metadata.get("sources", [])
+            ids = metadata.get("ids", [])
+            
+            for i, (text, source, doc_id) in enumerate(zip(texts, sources, ids)):
+                corpus_data.append({
+                    "id": f"corpus_{doc_id}",
+                    "title": source,
+                    "content": text,
+                    "source": source,
+                    "word_count": len(text.split()),
+                    "type": "original_corpus",
+                    "index": i
+                })
+                total_words += len(text.split())
+        
+        # Add interview documents
+        interviews_data = load_interviews()
+        for interview_id, interview in interviews_data.items():
+            for doc in interview.get("documents", []):
+                corpus_data.append({
+                    "id": f"interview_{doc['id']}",
+                    "title": doc["title"],
+                    "content": doc["content"],
+                    "source": f"{doc.get('source', '')} (from {interview['title']})",
+                    "word_count": doc.get("word_count", len(doc["content"].split())),
+                    "type": "interview_document",
+                    "interview_title": interview["title"],
+                    "interview_id": interview_id,
+                    "created_at": doc.get("created_at", "")
+                })
+                total_words += doc.get("word_count", len(doc["content"].split()))
         
         return {
             "documents": corpus_data,
             "total_count": len(corpus_data),
             "corpus_info": {
                 "total_documents": len(corpus_data),
-                "total_words": sum(len(text.split()) for text in texts)
+                "total_words": total_words,
+                "original_corpus_count": len([d for d in corpus_data if d.get("type") == "original_corpus"]),
+                "interview_documents_count": len([d for d in corpus_data if d.get("type") == "interview_document"])
             }
         }
     

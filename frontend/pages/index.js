@@ -144,7 +144,7 @@ export default function Home() {
       {/* Main Content */}
       <main style={{ 
         paddingTop: "120px", // Account for fixed header height
-        padding: (currentView === 'corpus' || currentView === 'prep') ? "120px 0 2rem 0" : "120px 2rem 2rem", 
+        padding: (currentView === 'corpus' || currentView === 'prep') ? "200px 0 2rem 0" : "120px 2rem 2rem", 
         fontFamily: "sans-serif",
         marginLeft: (sidebarOpen && currentView === 'chat') ? '280px' : '0',
         transition: 'margin-left 0.3s ease',

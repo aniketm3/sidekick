@@ -6,6 +6,7 @@ export default function ViewCorpus() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [filterType, setFilterType] = useState('all'); // 'all', 'original', 'interview'
 
   useEffect(() => {
     fetchCorpus();
@@ -28,10 +29,19 @@ export default function ViewCorpus() {
     }
   };
 
-  const filteredDocuments = corpus?.documents?.filter(doc =>
-    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.content.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredDocuments = corpus?.documents?.filter(doc => {
+    // Filter by search term
+    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (doc.interview_title && doc.interview_title.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Filter by type
+    const matchesType = filterType === 'all' || 
+                       (filterType === 'original' && doc.type === 'original_corpus') ||
+                       (filterType === 'interview' && doc.type === 'interview_document');
+    
+    return matchesSearch && matchesType;
+  }) || [];
 
   const truncateText = (text, maxLength = 200) => {
     if (text.length <= maxLength) return text;
@@ -146,7 +156,7 @@ export default function ViewCorpus() {
       </div>
 
       {/* Search */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '2rem', marginTop: '3rem' }}>
         <input
           type="text"
           placeholder="Search documents by title or content..."
@@ -232,21 +242,36 @@ export default function ViewCorpus() {
                     fontWeight: '600',
                     color: '#1f2937',
                     margin: 0,
-                    lineHeight: '1.4'
+                    lineHeight: '1.4',
+                    flex: 1
                   }}>
                     {doc.title}
                   </h3>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    backgroundColor: '#f3f4f6',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '4px',
-                    whiteSpace: 'nowrap',
-                    marginLeft: '1rem'
-                  }}>
-                    {doc.word_count} words
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                    {doc.type === 'interview_document' && (
+                      <span style={{
+                        fontSize: '0.7rem',
+                        color: '#d97706',
+                        backgroundColor: '#fef3c7',
+                        padding: '0.2rem 0.4rem',
+                        borderRadius: '4px',
+                        whiteSpace: 'nowrap',
+                        border: '1px solid #fbbf24'
+                      }}>
+                        {doc.interview_title}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      backgroundColor: '#f3f4f6',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {doc.word_count} words
+                    </span>
+                  </div>
                 </div>
                 <p style={{
                   fontSize: '0.875rem',
@@ -269,9 +294,9 @@ export default function ViewCorpus() {
             borderRadius: '8px',
             padding: '2rem',
             position: 'sticky',
-            top: '2rem',
+            top: '120px',
             height: 'fit-content',
-            maxHeight: '80vh',
+            maxHeight: 'calc(100vh - 160px)',
             overflowY: 'auto'
           }}>
             <div style={{
