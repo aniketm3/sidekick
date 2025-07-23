@@ -1,8 +1,13 @@
-from sentence_transformers import SentenceTransformer
 import faiss
 import json
 import numpy as np
 import pickle
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Load the documents
 with open("backend/data/ai_docs.json", "r") as f:
@@ -12,13 +17,19 @@ texts = [doc["text"] for doc in docs]
 sources = [doc["source"] for doc in docs]
 ids = [doc["id"] for doc in docs]
 
-# Load embedding model
-print("Loading model...")
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# Generate embeddings using OpenAI
+print("Generating embeddings with OpenAI...")
+embeddings = []
 
-# Embed the texts
-print("Embedding texts...")
-embeddings = model.encode(texts)
+for i, text in enumerate(texts):
+    print(f"Embedding document {i+1}/{len(texts)}")
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    embeddings.append(response.data[0].embedding)
+
+embeddings = np.array(embeddings)
 
 # Build the FAISS index
 print("Building index...")

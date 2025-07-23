@@ -1,4 +1,3 @@
-from sentence_transformers import SentenceTransformer
 import faiss
 import json
 import numpy as np
@@ -6,6 +5,11 @@ import pickle
 import os
 from datetime import datetime
 import uuid
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def load_interviews():
     """Load interviews from JSON file"""
@@ -79,18 +83,24 @@ def rebuild_index(progress_callback=None):
             raise Exception("No documents found to build index")
         
         if progress_callback:
-            progress_callback(20, "Loading embedding model...")
+            progress_callback(20, "Generating embeddings with OpenAI...")
+        
+        # Generate embeddings using OpenAI
+        print("Generating embeddings for all documents using OpenAI...")
+        embeddings = []
+        
+        for i, text in enumerate(texts):
+            if progress_callback and i % 10 == 0:
+                progress = 20 + int((i / len(texts)) * 50)  # 20-70% range
+                progress_callback(progress, f"Embedding document {i+1}/{len(texts)}")
             
-        # Load embedding model
-        print("Loading SentenceTransformer model...")
-        model = SentenceTransformer("all-MiniLM-L6-v2")
+            response = client.embeddings.create(
+                input=text,
+                model="text-embedding-3-small"
+            )
+            embeddings.append(response.data[0].embedding)
         
-        if progress_callback:
-            progress_callback(30, "Generating embeddings...")
-        
-        # Generate embeddings
-        print("Generating embeddings for all documents...")
-        embeddings = model.encode(texts, show_progress_bar=True)
+        embeddings = np.array(embeddings)
         
         if progress_callback:
             progress_callback(70, "Building FAISS index...")
@@ -130,7 +140,7 @@ def rebuild_index(progress_callback=None):
             "ids": ids,
             "last_rebuilt": datetime.now().isoformat(),
             "total_documents": len(texts),
-            "embedding_model": "all-MiniLM-L6-v2"
+            "embedding_model": "text-embedding-3-small"
         }
         
         with open(metadata_path, "wb") as f:

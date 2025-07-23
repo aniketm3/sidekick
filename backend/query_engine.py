@@ -1,4 +1,3 @@
-from sentence_transformers import SentenceTransformer
 import faiss
 import pickle
 import numpy as np
@@ -9,15 +8,17 @@ from config import get_index_paths
 
 load_dotenv()
 
-# Load model + index + metadata
-print("Loading model and index...")
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Load index + metadata
+print("Loading index and metadata...")
 
 # Get paths using persistent disk configuration
 paths = get_index_paths()
 index_path = paths["vector_index"]
 meta_path = paths["metadata"]
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
 index = faiss.read_index(index_path)
 with open(meta_path, "rb") as f:
     metadata = pickle.load(f)
@@ -30,10 +31,18 @@ print(f"Loaded {len(texts)} documents from unified index")
 if "last_rebuilt" in metadata:
     print(f"Index last rebuilt: {metadata['last_rebuilt']}")
 
+def get_embedding(text):
+    """Get OpenAI embedding for text"""
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    return np.array(response.data[0].embedding)
+
 def get_rag_context(query, k=3):
     """Embed query and get top-k matching text chunks"""
-    query_vec = model.encode([query])
-    D, I = index.search(np.array(query_vec), k)
+    query_vec = get_embedding(query)
+    D, I = index.search(np.array([query_vec]), k)
     return [{"text": texts[i], "source": sources[i]} for i in I[0]]
 
 
@@ -78,8 +87,6 @@ def answer(user_input, mode="explain", history=None):
 
     chunks = get_rag_context(user_input)
     prompt = make_prompt(user_input, chunks, mode=mode)
-
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",

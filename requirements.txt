@@ -6,10 +6,7 @@ python-dotenv
 
 # OpenAI and AI/ML
 openai>=1.70.0
-sentence-transformers>=4.0.0
 faiss-cpu>=1.8.0
-torch>=2.6.0
-transformers>=4.50.0
 
 # Data processing
 numpy>=1.26.0
