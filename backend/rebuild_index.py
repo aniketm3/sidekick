@@ -40,15 +40,18 @@ def get_all_documents():
             with open(meta_path, "rb") as f:
                 metadata = pickle.load(f)
             
-            original_texts = metadata.get("texts", [])
-            original_sources = metadata.get("sources", [])  
-            original_ids = metadata.get("ids", [])
+            # Only load documents that are NOT from interviews
+            all_texts = metadata.get("texts", [])
+            all_sources = metadata.get("sources", [])  
+            all_ids = metadata.get("ids", [])
             
-            texts.extend(original_texts)
-            sources.extend(original_sources)
-            ids.extend(original_ids)
+            for i, doc_id in enumerate(all_ids):
+                if not doc_id.startswith("interview_"):
+                    texts.append(all_texts[i])
+                    sources.append(all_sources[i])
+                    ids.append(all_ids[i])
             
-            print(f"Loaded {len(original_texts)} original corpus documents")
+            print(f"Loaded {len(texts)} original corpus documents")
         except Exception as e:
             print(f"Error loading original corpus: {e}")
     else:
