@@ -3,7 +3,6 @@ import faiss
 import json
 import numpy as np
 import pickle
-import os
 
 # Load the documents
 with open("backend/data/ai_docs.json", "r") as f:
@@ -27,12 +26,13 @@ dimension = embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
 
-# Create output folder if missing
-os.makedirs("backend/index", exist_ok=True)
+# Get paths using persistent disk configuration
+from config import get_index_paths
+paths = get_index_paths()
 
 # Save the index and metadata
-faiss.write_index(index, "backend/index/vector.index")
-with open("backend/index/metadata.pkl", "wb") as f:
+faiss.write_index(index, paths["vector_index"])
+with open(paths["metadata"], "wb") as f:
     pickle.dump({"texts": texts, "ids": ids, "sources": sources}, f)
 
 print("Index built and saved.")

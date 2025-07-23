@@ -514,8 +514,11 @@ def get_index_status():
         rebuild_reason = []
         
         try:
+            from config import get_index_paths
+            paths = get_index_paths()
+            
             interviews_file = os.path.join(BASE_DIR, "backend/interviews.json")
-            metadata_file = os.path.join(BASE_DIR, "index/metadata.pkl")
+            metadata_file = paths["metadata"]
             
             if not os.path.exists(metadata_file):
                 needs_rebuild = True

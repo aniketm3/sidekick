@@ -5,16 +5,17 @@ import numpy as np
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from config import get_index_paths
 
 load_dotenv()
 
 # Load model + index + metadata
 print("Loading model and index...")
 
-# cleaner path read for index and metadata
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-index_path = os.path.join(BASE_DIR, "index/vector.index")
-meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
+# Get paths using persistent disk configuration
+paths = get_index_paths()
+index_path = paths["vector_index"]
+meta_path = paths["metadata"]
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 index = faiss.read_index(index_path)

@@ -26,8 +26,9 @@ def get_all_documents():
     ids = []
     
     # Load existing original corpus if it exists
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    meta_path = os.path.join(BASE_DIR, "index/metadata.pkl")
+    from config import get_index_paths
+    paths = get_index_paths()
+    meta_path = paths["metadata"]
     
     if os.path.exists(meta_path):
         print("Loading existing original corpus documents...")
@@ -103,14 +104,13 @@ def rebuild_index(progress_callback=None):
         if progress_callback:
             progress_callback(85, "Saving index and metadata...")
         
-        # Create output directory
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        index_dir = os.path.join(BASE_DIR, "index")
-        os.makedirs(index_dir, exist_ok=True)
+        # Get paths using persistent disk configuration
+        from config import get_index_paths
+        paths = get_index_paths()
         
-        # Create backup of existing index
-        index_path = os.path.join(index_dir, "vector.index")
-        metadata_path = os.path.join(index_dir, "metadata.pkl")
+        index_dir = paths["index_dir"]
+        index_path = paths["vector_index"]
+        metadata_path = paths["metadata"]
         
         if os.path.exists(index_path):
             backup_time = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -137,7 +137,7 @@ def rebuild_index(progress_callback=None):
             pickle.dump(metadata, f)
         
         # Save rebuild status
-        status_path = os.path.join(index_dir, "rebuild_status.json")
+        status_path = paths["rebuild_status"]
         status = {
             "last_rebuild": datetime.now().isoformat(),
             "status": "completed",
@@ -172,8 +172,9 @@ def rebuild_index(progress_callback=None):
         
         # Save error status
         try:
-            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-            status_path = os.path.join(BASE_DIR, "index/rebuild_status.json")
+            from config import get_index_paths
+            paths = get_index_paths()
+            status_path = paths["rebuild_status"]
             status = {
                 "last_rebuild": datetime.now().isoformat(),
                 "status": "failed",
