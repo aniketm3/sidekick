@@ -298,7 +298,7 @@ export default function QueryBox({ conversationHistory, onAddToConversation }) {
                     }}
                 >
                     <div style={{ marginBottom: "0.5rem", fontWeight: "600" }}>
-                        <span>Query: "{item.prompt}"</span>
+                        <span>Query: &quot;{item.prompt}&quot;</span>
                         <span style={{ fontSize: "0.8rem", color: "#666", marginLeft: "1rem" }}>
                           {new Date(item.timestamp).toLocaleTimeString()}
                         </span>
