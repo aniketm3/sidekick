@@ -173,62 +173,11 @@ export default function ViewCorpus() {
       padding: '2rem',
       position: 'relative'
     }}>
-      {/* Rebuild Button - Top-right of page content */}
-      <button
-        onClick={rebuildIndex}
-        disabled={rebuilding}
-        style={{
-          position: 'absolute',
-          top: '-60px',
-          right: 0,
-          backgroundColor: rebuilding ? '#a855f7' : '#4f46e5',
-          border: 'none',
-          color: 'white',
-          cursor: rebuilding ? 'not-allowed' : 'pointer',
-          padding: '0.5rem 1rem',
-          fontSize: '0.875rem',
-          fontWeight: '500',
-          borderRadius: '6px',
-          opacity: rebuilding ? 0.7 : 1
-        }}
-        title={rebuilding ? `Rebuilding... ${rebuildProgress.progress}%` : 'Rebuild search index'}
-      >
-        {rebuilding ? (
-          <TailSpin
-            height="20"
-            width="20"
-            color="white"
-            ariaLabel="rebuilding"
-          />
-        ) : (
-          'Rebuild'
-        )}
-      </button>
 
-      {/* Index Status - Near button */}
-      {indexStatus && indexStatus.last_rebuild !== 'never' && (
-        <div style={{ 
-          position: 'absolute',
-          top: '-20px',
-          right: '80px',
-          fontSize: '0.75rem', 
-          color: '#6b7280',
-          textAlign: 'right'
-        }}>
-          Index built: {new Date(indexStatus.last_rebuild).toLocaleDateString('en-US', {
-            month: 'numeric',
-            day: 'numeric'
-          })} {new Date(indexStatus.last_rebuild).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          }).toLowerCase()}
-        </div>
-      )}
 
 
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ 
             fontSize: '1.8rem', 
@@ -245,6 +194,51 @@ export default function ViewCorpus() {
           }}>
             Explore the {corpus?.corpus_info?.total_documents || 0} documents in your knowledge base
           </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+          <button
+            onClick={rebuildIndex}
+            disabled={rebuilding}
+            style={{
+              backgroundColor: rebuilding ? '#a855f7' : '#4f46e5',
+              border: 'none',
+              color: 'white',
+              cursor: rebuilding ? 'not-allowed' : 'pointer',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              borderRadius: '6px',
+              opacity: rebuilding ? 0.7 : 1
+            }}
+            title={rebuilding ? `Rebuilding... ${rebuildProgress.progress}%` : 'Rebuild search index'}
+          >
+            {rebuilding ? (
+              <TailSpin
+                height="20"
+                width="20"
+                color="white"
+                ariaLabel="rebuilding"
+              />
+            ) : (
+              'Rebuild index'
+            )}
+          </button>
+          {indexStatus && indexStatus.last_rebuild !== 'never' && (
+            <div style={{ 
+              fontSize: '0.75rem', 
+              color: '#6b7280',
+              textAlign: 'right'
+            }}>
+              Index built: {new Date(indexStatus.last_rebuild).toLocaleDateString('en-US', {
+                month: 'numeric',
+                day: 'numeric'
+              })} {new Date(indexStatus.last_rebuild).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              }).toLowerCase()}
+            </div>
+          )}
         </div>
       </div>
 
