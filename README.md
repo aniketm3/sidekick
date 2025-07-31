@@ -30,8 +30,3 @@ The app uses RAG pipeline to ensure responses are technically sound. The documen
 }
 ```
 These are all indexed using the `all-MiniLM-L6-v2` embedding model from SentenceTransformers to best capture relative positionings. The embeddings are then searched using the FAISS search method, retrieving the top-k (3) similar embeddings.
-
-## Quick links:
-- Main application: https://perplexity-take-home-seven.vercel.app/
-- Backend deployed to https://sidekickbackend-ogjw.onrender.com
-- Demo: 
