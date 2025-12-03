@@ -45,6 +45,10 @@ def get_interview_by_id(interview_id: str):
 
 app = FastAPI()
 
+@app.get("/")
+def health():
+    return {"status": "ok"}
+
 # Optional: allow frontend to access backend from another port
 app.add_middleware(
     CORSMiddleware,
